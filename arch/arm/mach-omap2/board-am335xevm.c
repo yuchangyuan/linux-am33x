@@ -203,10 +203,10 @@ static struct snd_platform_data am335x_evm_snd_data1 = {
 
 /* TODO, pin direction */
 static u8 am335x_dit_serializer_direction0[] = {
-	INACTIVE_MODE,	INACTIVE_MODE,	TX_MODE,	RX_MODE,
-	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
-	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
-	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	TX_MODE,       INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
+	INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
+	INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
+	INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
 };
 
 /* TODO, mode */
@@ -605,6 +605,13 @@ static struct pinmux_config mcasp1_pin_mux[] = {
 	{"mii1_col.mcasp1_axr2", OMAP_MUX_MODE4 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"rmii1_refclk.mcasp1_axr3", OMAP_MUX_MODE4 |
 						AM33XX_PIN_INPUT_PULLDOWN},
+	{NULL, 0},
+};
+
+/* Module pin mux for mcasp0 */
+static struct pinmux_config mcasp0_pin_mux[] = {
+	{"mcasp0_ahclkx.mcasp0_ahclkx", OMAP_MUX_MODE0 | AM33XX_INPUT_EN},
+	{"mcasp0_axr0.mcasp0_axr0", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT},
 	{NULL, 0},
 };
 
@@ -1488,8 +1495,8 @@ static struct platform_device am335x_evm_dit_device = {
 
 static void mcasp0_init(int evm_id, int profile)
 {
-	/* setup pin mux */
-	/* TODO */
+	setup_pin_mux(mcasp0_pin_mux);
+
 	am335x_register_mcasp(&am335x_evm_snd_data0, 0);
 	platform_device_register(&am335x_evm_dit_device);
 }
