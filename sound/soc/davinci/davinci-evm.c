@@ -242,6 +242,7 @@ static struct snd_soc_dai_link da850_evm_dai = {
 };
 
 static struct snd_soc_dai_link am335x_evm_dai = {
+#ifndef CONFIG_SND_AM335X_SOC_EVM_DIT
 	.name = "TLV320AIC3X",
 	.stream_name = "AIC3X",
 	.cpu_dai_name = "davinci-mcasp.1",
@@ -250,6 +251,15 @@ static struct snd_soc_dai_link am335x_evm_dai = {
 	.platform_name = "davinci-pcm-audio",
 	.init = evm_aic3x_init,
 	.ops = &evm_ops,
+#else
+	.name = "McASP",
+	.stream_name = "spdif",
+	.cpu_dai_name= "davinci-mcasp.0",
+	.codec_dai_name = "dit-hifi",
+	.codec_name = "spdif-dit",
+	.platform_name = "davinci-pcm-audio",
+	.ops = &evm_spdif_ops,
+#endif
 };
 
 /* davinci dm6446 evm audio machine driver */

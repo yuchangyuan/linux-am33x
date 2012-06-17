@@ -200,6 +200,29 @@ static struct snd_platform_data am335x_evm_snd_data1 = {
 	.rxnumevt	= 1,
 };
 
+
+/* TODO, pin direction */
+static u8 am335x_dit_serializer_direction0[] = {
+	INACTIVE_MODE,	INACTIVE_MODE,	TX_MODE,	RX_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+};
+
+/* TODO, mode */
+static struct snd_platform_data am335x_evm_snd_data0 = {
+	.tx_dma_offset = 0x46000000,
+	.rx_dma_offset = 0,
+	.op_mode = DAVINCI_MCASP_DIT_MODE,
+	.num_serializer = ARRAY_SIZE(am335x_dit_serializer_direction0),
+	.tdm_slots = 32,
+	.serial_dir = am335x_dit_serializer_direction0,
+	.asp_chan_q = EVENTQ_2,
+	.version = MCASP_VERSION_3,
+	.txnumevt = 1,
+	.rxnumevt = 1,
+};
+
 static struct omap2_hsmmc_info am335x_mmc[] __initdata = {
 	{
 		.mmc            = 1,
@@ -1455,6 +1478,22 @@ static void mcasp1_init(int evm_id, int profile)
 	return;
 }
 
+
+static struct platform_device am335x_evm_dit_device = {
+	.name = "spdif-dit",
+	.id = -1,
+};
+
+/* TODO, spdif dit*/
+
+static void mcasp0_init(int evm_id, int profile)
+{
+	/* setup pin mux */
+	/* TODO */
+	am335x_register_mcasp(&am335x_evm_snd_data0, 0);
+	platform_device_register(&am335x_evm_dit_device);
+}
+
 static void mmc1_init(int evm_id, int profile)
 {
 	setup_pin_mux(mmc1_pin_mux);
@@ -1812,6 +1851,7 @@ static struct evm_dev_cfg beaglebone_dev_cfg[] = {
 	{usb1_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{mmc0_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{i2c2_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
+	{mcasp0_init,   DEV_ON_BASEBOARD, PROFILE_NONE},
 	{NULL, 0, 0},
 };
 
