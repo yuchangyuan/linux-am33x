@@ -770,6 +770,9 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
 	int word_length;
 	u8 fifo_level;
 
+	int rate = params_rate(params);
+	printk(KERN_DEBUG "hw params_rate = %d\n", rate);
+
 	davinci_hw_common_param(dev, substream->stream);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		fifo_level = dev->txnumevt;
