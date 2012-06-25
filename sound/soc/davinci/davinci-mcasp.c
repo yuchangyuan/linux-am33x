@@ -32,6 +32,14 @@
 #include "davinci-pcm.h"
 #include "davinci-mcasp.h"
 
+#ifndef CONFIG_SND_AM335X_SOC_EVM_DIT_AHCLKX_FREQ
+#define CONFIG_SND_AM335X_SOC_EVM_DIT_AHCLKX_FREQ 0
+#endif
+
+static unsigned int ahclkx_freq = CONFIG_SND_AM335X_SOC_EVM_DIT_AHCLKX_FREQ;
+module_param(ahclkx_freq, uint, 0);
+MODULE_PARM_DESC(ahclkx_freq, "Frequency of external AHCLKX clock.");
+
 /*
  * McASP register definitions
  */
@@ -727,7 +735,7 @@ static void davinci_hw_param(struct davinci_audio_dev *dev, int stream)
 }
 
 /* S/PDIF */
-static void davinci_hw_dit_param(struct davinci_audio_dev *dev)
+static void davinci_hw_dit_param(struct davinci_audio_dev *dev, int rate)
 {
 	/* Set the PDIR for Serialiser as output */
 	mcasp_set_bits(dev->base + DAVINCI_MCASP_PDIR_REG, AFSX);
@@ -754,7 +762,14 @@ static void davinci_hw_dit_param(struct davinci_audio_dev *dev)
 	mcasp_clr_bits(dev->base + DAVINCI_MCASP_XEVTCTL_REG, TXDATADMADIS);
 
 	/* Only 44100 and 48000 are valid, both have the same setting */
+#ifdef CONFIG_SND_AM335X_SOC_EVM_DIT_AHCLKX_EXTERNAL
+	mcasp_clr_bits(dev->base + DAVINCI_MCASP_AHCLKXCTL_REG, AHCLKXE);
+	mcasp_set_reg(dev->base + DAVINCI_MCASP_ACLKXCTL_REG, 
+		      ACLKXE | TX_ASYNC |
+		      ACLKXDIV(ahclkx_freq / 128 / rate - 1));
+#else
 	mcasp_set_bits(dev->base + DAVINCI_MCASP_AHCLKXCTL_REG, AHCLKXDIV(3));
+#endif
 
 	/* Enable the DIT */
 	mcasp_set_bits(dev->base + DAVINCI_MCASP_TXDITCTL_REG, DITEN);
@@ -771,7 +786,7 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
 	u8 fifo_level;
 
 	int rate = params_rate(params);
-	printk(KERN_DEBUG "hw params_rate = %d\n", rate);
+	printk(KERN_DEBUG "set sample rate %d\n", rate);
 
 	davinci_hw_common_param(dev, substream->stream);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -780,7 +795,7 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
 		fifo_level = dev->rxnumevt;
 
 	if (dev->op_mode == DAVINCI_MCASP_DIT_MODE)
-		davinci_hw_dit_param(dev);
+		davinci_hw_dit_param(dev, rate);
 	else
 		davinci_hw_param(dev, substream->stream);
 
@@ -916,6 +931,14 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 	struct resource *mem, *ioarea, *res;
 	struct snd_platform_data *pdata;
 	struct davinci_audio_dev *dev;
+	struct snd_soc_dai_driver *dai;
+
+	int i;
+	/* copy from pcm_native.c */
+	unsigned int rates[] = { 5512, 8000, 11025, 16000, 22050, 32000, 44100,
+				 48000, 64000, 88200, 96000, 176400, 192000 };
+
+
 	int ret = 0;
 
 	dev = kzalloc(sizeof(struct davinci_audio_dev), GFP_KERNEL);
@@ -1021,7 +1044,22 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 
 	dma_data->channel = res->start;
 	dev_set_drvdata(&pdev->dev, dev);
-	ret = snd_soc_register_dai(&pdev->dev, &davinci_mcasp_dai[pdata->op_mode]);
+
+	dai = &davinci_mcasp_dai[pdata->op_mode];
+#ifdef CONFIG_SND_AM335X_SOC_EVM_DIT_AHCLKX_EXTERNAL
+	/* find suitable sample rate */
+	dai->playback.rates = 0;
+
+	for (i = 0; i < ARRAY_SIZE(rates); ++i) {
+		if (ahclkx_freq == 0)
+			break;
+		if (ahclkx_freq % (128 * rates[i]))
+			continue;
+		printk(KERN_DEBUG "sample rate %d supported\n", rates[i]);
+		dai->playback.rates |= snd_pcm_rate_to_rate_bit(rates[i]);
+	}
+#endif
+	ret = snd_soc_register_dai(&pdev->dev, dai);
 
 	if (ret != 0)
 		goto err_iounmap;
@@ -1192,4 +1230,3 @@ module_exit(davinci_mcasp_exit);
 MODULE_AUTHOR("Steve Chen");
 MODULE_DESCRIPTION("TI DAVINCI McASP SoC Interface");
 MODULE_LICENSE("GPL");
-

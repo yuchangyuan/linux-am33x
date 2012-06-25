@@ -23,7 +23,12 @@
 
 #define DRV_NAME "spdif-dit"
 
+#ifdef CONFIG_SND_AM335X_SOC_EVM_DIT
+#define STUB_RATES	SNDRV_PCM_RATE_8000_192000
+#else
 #define STUB_RATES	SNDRV_PCM_RATE_8000_96000
+#endif
+
 #define STUB_FORMATS (SNDRV_PCM_FMTBIT_S8 | \
 		      SNDRV_PCM_FMTBIT_U8 |		  \
 		      SNDRV_PCM_FMTBIT_S16_LE |		  \

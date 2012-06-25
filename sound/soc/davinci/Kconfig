@@ -49,6 +49,19 @@ config  SND_AM335X_SOC_EVM_DIT
 	help
 	  Say Y if you want add DIT mode support for McASP0.
 
+config SND_AM335X_SOC_EVM_DIT_AHCLKX_EXTERNAL
+    bool "Using external AHCLKX"
+    depends on SND_AM335X_SOC_EVM_DIT
+    help
+      Say Y if you use external clock drive AHCLKX.
+
+config SND_AM335X_SOC_EVM_DIT_AHCLKX_FREQ
+        int "Frequency of AHCLKX for McASP0(Hz)"
+        depends on SND_AM335X_SOC_EVM_DIT_AHCLKX_EXTERNAL=y
+        default "22579200"
+        help
+          Enter the frequency of external AHCLKX for McASP0.
+
 choice
 	prompt "DM365 codec select"
 	depends on SND_DAVINCI_SOC_EVM
