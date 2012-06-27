@@ -615,6 +615,63 @@ static int davinci_config_channel_size(struct davinci_audio_dev *dev,
 	return 0;
 }
 
+
+static int davinci_config_dit_channel_size(struct davinci_audio_dev *dev,
+					   int channel_size)
+{
+	u32 mask, rotate;
+
+	switch (channel_size) {
+	case DAVINCI_AUDIO_WORD_8:
+		rotate = 4;
+		mask = 0x000000ff;
+		break;
+
+	case DAVINCI_AUDIO_WORD_12:
+		rotate = 5;
+		mask = 0x00000fff;
+		break;
+
+	case DAVINCI_AUDIO_WORD_16:
+		rotate = 6;
+		mask = 0x0000ffff;
+		break;
+
+	case DAVINCI_AUDIO_WORD_20:
+		rotate = 7;
+		mask = 0x000fffff;
+		break;
+
+	case DAVINCI_AUDIO_WORD_24:
+		rotate = 0;
+		mask = 0x00ffffff;
+		break;
+
+	case DAVINCI_AUDIO_WORD_28:
+		rotate = 1;
+		mask = 0x0ffffff0;
+		break;
+
+	case DAVINCI_AUDIO_WORD_32:
+		rotate = 2;
+		mask = 0xffffff00;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+
+	mcasp_mod_bits(dev->base + DAVINCI_MCASP_TXFMT_REG,
+					TXSSZ(0x0F), TXSSZ(0x0F));
+	/* rotate */
+	mcasp_mod_bits(dev->base + DAVINCI_MCASP_TXFMT_REG, TXROT(rotate),
+							TXROT(7));
+	mcasp_set_reg(dev->base + DAVINCI_MCASP_TXMASK_REG, mask);
+
+	return 0;
+}
+
+
 static void davinci_hw_common_param(struct davinci_audio_dev *dev, int stream)
 {
 	int i;
@@ -829,7 +886,10 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
 		dma_params->acnt = dma_params->data_type;
 
 	dma_params->fifo_level = fifo_level;
-	davinci_config_channel_size(dev, word_length);
+	if (dev->op_mode == DAVINCI_MCASP_DIT_MODE)
+	    davinci_config_dit_channel_size(dev, word_length);
+	else
+	    davinci_config_channel_size(dev, word_length);
 
 	return 0;
 }
