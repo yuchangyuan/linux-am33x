@@ -201,7 +201,7 @@ static struct snd_platform_data am335x_evm_snd_data1 = {
 };
 
 
-/* TODO, pin direction */
+/* pin direction */
 static u8 am335x_dit_serializer_direction0[] = {
 	TX_MODE,       INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
 	INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
@@ -209,7 +209,7 @@ static u8 am335x_dit_serializer_direction0[] = {
 	INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
 };
 
-/* TODO, mode */
+/* mode */
 static struct snd_platform_data am335x_evm_snd_data0 = {
 	.tx_dma_offset = 0x46000000,
 	.rx_dma_offset = 0,
@@ -610,9 +610,9 @@ static struct pinmux_config mcasp1_pin_mux[] = {
 
 /* Module pin mux for mcasp0 */
 static struct pinmux_config mcasp0_pin_mux[] = {
-	{"mcasp0_ahclkx.mcasp0_ahclkx", OMAP_MUX_MODE0 | AM33XX_INPUT_EN |
-	 					AM33XX_PULL_DISA},
-	{"mcasp0_axr0.mcasp0_axr0", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT},
+	{"mcasp0_ahclkx.gpio3_21", OMAP_MUX_MODE7 | AM33XX_PIN_INPUT_PULLDOWN},
+	{"lcd_data15.mcasp0_ahclkx", OMAP_MUX_MODE3 | AM33XX_PIN_INPUT_PULLDOWN},
+	{"lcd_data10.mcasp0_axr0", OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT},
 	{NULL, 0},
 };
 
