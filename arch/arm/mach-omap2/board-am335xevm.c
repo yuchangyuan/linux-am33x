@@ -1188,6 +1188,15 @@ static struct spi_board_info am335x_spi1_slave_info[] = {
 	},
 };
 
+
+static struct spi_board_info am335x_spi1_ssd1306 = {
+	.modalias      = "spidev",
+	.irq           = -1,
+	.max_speed_hz  = 5 * 1000 * 1000,
+	.bus_num       = 2,
+	.chip_select   = 0,
+};
+
 static struct gpmc_timings am335x_nand_timings = {
 	.sync_clk = 0,
 
@@ -1694,6 +1703,15 @@ static void spi1_init(int evm_id, int profile)
 	return;
 }
 
+/* setup spi1 which connected to ssd1306 */
+static void spi1_ssd1306_init(int evm_id, int profile)
+{
+	setup_pin_mux(spi1_pin_mux);
+	spi_register_board_info(&am335x_spi1_ssd1306, 1);
+
+	return;
+}
+
 
 static int beaglebone_phy_fixup(struct phy_device *phydev)
 {
@@ -1860,6 +1878,7 @@ static struct evm_dev_cfg beaglebone_dev_cfg[] = {
 	{mmc0_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{i2c2_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{mcasp0_init,   DEV_ON_BASEBOARD, PROFILE_NONE},
+	{spi1_ssd1306_init, DEV_ON_BASEBOARD, PROFILE_NONE},
 	{NULL, 0, 0},
 };
 
