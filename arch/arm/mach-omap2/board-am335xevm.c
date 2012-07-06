@@ -41,6 +41,7 @@
 
 /* LCD controller is similar to DA850 */
 #include <video/da8xx-fb.h>
+#include <video/ssd1306fb.h>
 
 #include <mach/hardware.h>
 #include <mach/board-am335xevm.h>
@@ -509,6 +510,20 @@ static struct pinmux_config spi1_pin_mux[] = {
 	{NULL, 0},
 };
 
+
+/* Module pin mux for SSD1306 OLED controller */
+static struct pinmux_config spi1_ssd1306_pin_mux[] = {
+	{"mcasp0_aclkx.spi1_sclk", OMAP_MUX_MODE3 | AM33XX_PULL_ENBL
+		| AM33XX_INPUT_EN},
+	{"mcasp0_axr0.spi1_d1", OMAP_MUX_MODE3 | AM33XX_PULL_ENBL
+		| AM33XX_INPUT_EN},
+	{"mcasp0_ahclkr.spi1_cs0", OMAP_MUX_MODE3 | AM33XX_PULL_ENBL
+		| AM33XX_PULL_UP | AM33XX_INPUT_EN},
+	{"mcasp0_fsx.gpio3_15", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT},
+	{"mcasp0_ahclkx.gpio3_21", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT},
+	{NULL, 0},
+};
+
 /* Module pin mux for rgmii1 */
 static struct pinmux_config rgmii1_pin_mux[] = {
 	{"mii1_txen.rgmii1_tctl", OMAP_MUX_MODE2 | AM33XX_PIN_OUTPUT},
@@ -610,7 +625,6 @@ static struct pinmux_config mcasp1_pin_mux[] = {
 
 /* Module pin mux for mcasp0 */
 static struct pinmux_config mcasp0_pin_mux[] = {
-	{"mcasp0_ahclkx.gpio3_21", OMAP_MUX_MODE7 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"lcd_data15.mcasp0_ahclkx", OMAP_MUX_MODE3 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"lcd_data10.mcasp0_axr0", OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT},
 	{NULL, 0},
@@ -1188,11 +1202,16 @@ static struct spi_board_info am335x_spi1_slave_info[] = {
 	},
 };
 
+static const struct ssd1306fb_platform_data ssd1306fb_data = {
+    .rst_gpio = GPIO_TO_PIN(3, 15),
+    .dc_gpio  = GPIO_TO_PIN(3, 21),
+};
 
 static struct spi_board_info am335x_spi1_ssd1306 = {
-	.modalias      = "spidev",
+	.modalias      = "ssd1306fb",
 	.irq           = -1,
-	.max_speed_hz  = 5 * 1000 * 1000,
+	.max_speed_hz  = 48 * 1000 * 1000,
+	.platform_data = &ssd1306fb_data,
 	.bus_num       = 2,
 	.chip_select   = 0,
 };
@@ -1706,7 +1725,7 @@ static void spi1_init(int evm_id, int profile)
 /* setup spi1 which connected to ssd1306 */
 static void spi1_ssd1306_init(int evm_id, int profile)
 {
-	setup_pin_mux(spi1_pin_mux);
+	setup_pin_mux(spi1_ssd1306_pin_mux);
 	spi_register_board_info(&am335x_spi1_ssd1306, 1);
 
 	return;
