@@ -432,7 +432,7 @@ static int __devinit ssd1306fb_probe (struct spi_device *spi)
 		return -EINVAL;
 	}
 
-	vmem = (u8 *)kmalloc(vmem_size, GFP_KERNEL);
+	vmem = (u8 *)alloc_pages_exact(vmem_size, GFP_KERNEL);
 	if (!vmem)
 		return retval;
 
@@ -508,7 +508,7 @@ cmap_fail:
 	kfree(par->buf);
 
 fballoc_fail:
-	kfree(vmem);
+	free_pages_exact(vmem, vmem_size);
 
 	return retval;
 }
@@ -522,8 +522,8 @@ static int __devexit ssd1306fb_remove(struct spi_device *spi)
 
 	if (info) {
 		struct ssd1306fb_par *par = info->par;
+		free_pages_exact(info->screen_base, info->fix.smem_len);
 		unregister_framebuffer(info);
-		kfree(info->screen_base);
 		kfree(par->buf);
 		fb_dealloc_cmap(&info->cmap);
 		gpio_free(par->rst);
