@@ -203,7 +203,7 @@ static struct snd_platform_data am335x_evm_snd_data1 = {
 
 /* pin direction */
 static u8 am335x_dit_serializer_direction0[] = {
-	TX_MODE,       INACTIVE_MODE, INACTIVE_MODE, TX_MODE,
+	TX_MODE,       INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
 	INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
 	INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
 	INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE, INACTIVE_MODE,
@@ -613,7 +613,6 @@ static struct pinmux_config mcasp0_pin_mux[] = {
 	{"mcasp0_ahclkx.gpio3_21", OMAP_MUX_MODE7 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"lcd_data15.mcasp0_ahclkx", OMAP_MUX_MODE3 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"lcd_data10.mcasp0_axr0", OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT},
-	{"lcd_data13.mcasp0_axr3", OMAP_MUX_MODE4 | AM33XX_PIN_OUTPUT},
 	{NULL, 0},
 };
 
