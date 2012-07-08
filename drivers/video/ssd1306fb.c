@@ -30,16 +30,29 @@
 #define HEIGHT		64
 
 #define NATIVE_VMEM_SIZE	(WIDTH * HEIGHT / 8)
+
+#ifdef CONFIG_FB_SSD1306_1BPP
 #define VMEM_SIZE		(WIDTH * HEIGHT / 8)
+#else
+#define VMEM_SIZE		(WIDTH * HEIGHT)
+#endif
+
+#define CMAP_BITS	1
+#define CMAP_LEN	(1 << CMAP_BITS)
 
 static struct fb_fix_screeninfo ssd1306fb_fix __devinitdata = {
 	.id		= "SSD1306",
 	.type		= FB_TYPE_PACKED_PIXELS,
+#ifdef CONFIG_FB_SSD1306_1BPP
 	.visual		= FB_VISUAL_MONO10,
+	.line_length	= WIDTH/8,
+#else
+	.visual		= FB_VISUAL_PSEUDOCOLOR,
+	.line_length	= WIDTH,
+#endif
 	.xpanstep	= 0,
 	.ypanstep	= 0,
 	.ywrapstep	= 0,
-	.line_length	= WIDTH/8,
 	.accel		= FB_ACCEL_NONE,
 };
 
@@ -49,8 +62,17 @@ static struct fb_var_screeninfo ssd1306fb_var __devinitdata = {
 	.yres		= HEIGHT,
 	.xres_virtual	= WIDTH,
 	.yres_virtual	= HEIGHT,
+#ifdef CONFIG_FB_SSD1306_1BPP
 	.bits_per_pixel	= 1,
 	.nonstd		= 1,
+#else
+	.bits_per_pixel	= 8,
+        .grayscale      = 1,
+        .red =          { 0, CMAP_BITS, 0 },
+        .green =        { 0, CMAP_BITS, 0 },
+        .blue =         { 0, CMAP_BITS, 0 },
+        .transp =       { 0, 0, 0 },
+#endif
 };
 
 
@@ -144,7 +166,8 @@ static void ssd1306fb_update_display(struct ssd1306fb_par *par)
 	int ret = 0;
 	u8 *vmem = par->info->screen_base;
 	u8 *buf = par->buf;
-	int i, j;
+	s16 *src = (s16 *)(buf + NATIVE_VMEM_SIZE);
+	int x, y;
 
 	memset(buf, 0, NATIVE_VMEM_SIZE);
 	/* translate vmem to buf
@@ -152,11 +175,12 @@ static void ssd1306fb_update_display(struct ssd1306fb_par *par)
 	   - ...
 	   - page7: colum0 ~ colum127
 	 */
-	for (i = 0; i < HEIGHT; ++i) {
-		u8 mask = 1 << (i % 8);
-		for (j = 0; j < WIDTH / 8; ++j) {
-			u8 v = vmem[i * WIDTH / 8 + j];
-			u8 *p = buf + i / 8 * WIDTH + j * 8;
+#ifdef CONFIG_FB_SSD1306_1BPP
+	for (y = 0; y < HEIGHT; ++y) {
+		u8 mask = 1 << (y % 8);
+		for (x = 0; x < WIDTH / 8; ++x) {
+			u8 v = vmem[y * WIDTH / 8 + x];
+			u8 *p = buf + y / 8 * WIDTH + x * 8;
 			if (v & 0x80) p[0] |= mask;
 			if (v & 0x40) p[1] |= mask;
 			if (v & 0x20) p[2] |= mask;
@@ -167,7 +191,61 @@ static void ssd1306fb_update_display(struct ssd1306fb_par *par)
 			if (v & 0x01) p[7] |= mask;
 		}
 	}
+#else
+#ifdef CONFIG_FB_SSD1306_DITHER
+/* algorithm from wikipedia:
 
+   oldpixel := pixel[x][y]
+   newpixel := find_closest_palette_color(oldpixel)
+   pixel[x][y] := newpixel
+   quant_error := oldpixel - newpixel
+   pixel[x+1][y] := pixel[x+1][y] + 7/16 * quant_error
+   pixel[x-1][y+1] := pixel[x-1][y+1] + 3/16 * quant_error
+   pixel[x][y+1] := pixel[x][y+1] + 5/16 * quant_error
+   pixel[x+1][y+1] := pixel[x+1][y+1] + 1/16 * quant_error
+*/
+	/* dither, from vmem to buf + NATIVE_VMEM_SIZE
+	   NOTE: use s16 to avoid error
+	*/
+	for (x = 0; x < WIDTH * HEIGHT; ++x) {
+		src[x] = vmem[x];
+	}
+
+	for (y = 0; y < HEIGHT; ++y) {
+		for (x = 0; x < WIDTH; ++x) {
+			s16 old = src[y * WIDTH + x];
+			s16 new = (old >= 0x80) ? 0xff : 0x00;
+			s16 err = old - new;
+			src[y * WIDTH + x] = new;
+
+			src[x + 1 + y * WIDTH] += err * 7 / 16;
+			src[x - 1 + (y + 1) * WIDTH] += err * 3 / 16;
+			src[x + (y + 1) * WIDTH] += err * 5 / 16;
+			src[x + 1 + (y + 1) * WIDTH] += err / 16;
+		}
+	}
+
+	for (y = 0; y < HEIGHT; ++y) {
+		u8 mask = 1 << (y % 8);
+		u8 *p = buf + y / 8 * WIDTH;
+		for (x = 0; x < WIDTH; ++x) {
+			if (src[y * WIDTH + x] > 0x80) {
+				p[x] |= mask;
+			}
+		}
+	}
+#else
+	for (y = 0; y < HEIGHT; ++y) {
+		u8 mask = 1 << (y % 8);
+		u8 *p = buf + y / 8 * WIDTH;
+		for (x = 0; x < WIDTH; ++x) {
+			if (vmem[y * WIDTH + x] & 0x80) {
+				p[x] |= mask;
+			}
+		}
+	}
+#endif
+#endif
 	ssd1306_set_page_column(par, 0, 0);
 
 	/* Blast framebuffer to SSD1306 internal display RAM */
@@ -303,6 +381,14 @@ static ssize_t ssd1306fb_write(struct fb_info *info, const char __user *buf,
 	return (err) ? err : count;
 }
 
+/* dummy function, to make FBIOPUTCMAP not return error */
+static int ssd1306fb_setcolreg(unsigned regno, unsigned red, unsigned green,
+			   unsigned blue, unsigned transp,
+			   struct fb_info *info)
+{
+	return 0;
+}
+
 
 static struct fb_ops ssd1306fb_ops = {
 	.owner		= THIS_MODULE,
@@ -311,10 +397,11 @@ static struct fb_ops ssd1306fb_ops = {
 	.fb_fillrect	= ssd1306fb_fillrect,
 	.fb_copyarea	= ssd1306fb_copyarea,
 	.fb_imageblit	= ssd1306fb_imageblit,
+	.fb_setcolreg	= ssd1306fb_setcolreg,
 };
 
 static struct fb_deferred_io ssd1306fb_defio = {
-	.delay		= HZ / 20,
+	.delay		= HZ / 100,
 	.deferred_io	= ssd1306fb_deferred_io,
 };
 
@@ -329,6 +416,7 @@ static int __devinit ssd1306fb_probe (struct spi_device *spi)
 	struct fb_info *info;
 	struct ssd1306fb_par *par;
 	int retval = -ENOMEM;
+	int i;
 
 	/* TODO, ??
 	if (chip != SSD1306_DISPLAY_GENERIC_LCD) {
@@ -353,23 +441,14 @@ static int __devinit ssd1306fb_probe (struct spi_device *spi)
 		goto fballoc_fail;
 
 	info->screen_base = vmem;
+
+	printk(KERN_DEBUG "screen_base = %p\n", vmem);
+
 	info->fbops = &ssd1306fb_ops;
 	info->fix = ssd1306fb_fix;
 	info->fix.smem_start = virt_to_phys(vmem);
 	info->fix.smem_len = vmem_size;
 	info->var = ssd1306fb_var;
-	/* The SSD1306 packed pixel format does not translate well here */
-	/* FIXME - change to mono reporting */
-	/*
-	info->var.red.offset = 11;
-	info->var.red.length = 5;
-	info->var.green.offset = 5;
-	info->var.green.length = 6;
-	info->var.blue.offset = 0;
-	info->var.blue.length = 5;
-	info->var.transp.offset = 0;
-	info->var.transp.length = 0;
-	*/
 	info->flags = FBINFO_FLAG_DEFAULT | FBINFO_VIRTFB;
 	info->fbdefio = &ssd1306fb_defio;
 	fb_deferred_io_init(info);
@@ -379,9 +458,29 @@ static int __devinit ssd1306fb_probe (struct spi_device *spi)
 	par->spi = spi;
 	par->rst = pdata->rst_gpio;
 	par->dc = pdata->dc_gpio;
+#ifdef CONFIG_FB_SSD1306_DITHER
+	/* native_vmem_size + vmem_size * 2 (u8 -> s16) */
+	par->buf = (u8 *)kmalloc(NATIVE_VMEM_SIZE + VMEM_SIZE * 2, GFP_KERNEL);
+#else
 	par->buf = (u8 *)kmalloc(NATIVE_VMEM_SIZE, GFP_KERNEL);
+#endif
 	if (par->buf < 0)
 		goto fballoc_fail;
+
+#ifndef CONFIG_FB_SSD1306_1BPP
+        /* set cmap */
+	retval = fb_alloc_cmap(&info->cmap, CMAP_LEN, 0);
+        if (retval < 0) {
+                pr_err("%s: Failed to allocate colormap\n", DRVNAME);
+                goto cmap_fail;
+        }
+
+        for (i = 0; i < CMAP_LEN; i++) {
+                info->cmap.red[i] = i * 0xFFFF / (CMAP_LEN - 1);
+	}
+	memcpy(info->cmap.green, info->cmap.red, sizeof(u16)*CMAP_LEN);
+	memcpy(info->cmap.blue, info->cmap.red, sizeof(u16)*CMAP_LEN);
+#endif
 
 	retval = register_framebuffer(info);
 	if (retval < 0)
@@ -403,8 +502,11 @@ init_fail:
 	spi_set_drvdata(spi, NULL);
 
 fbreg_fail:
-	kfree(par->buf);
+	fb_dealloc_cmap(&info->cmap);
 	framebuffer_release(info);
+cmap_fail:
+	kfree(par->buf);
+
 fballoc_fail:
 	kfree(vmem);
 
@@ -420,10 +522,10 @@ static int __devexit ssd1306fb_remove(struct spi_device *spi)
 
 	if (info) {
 		struct ssd1306fb_par *par = info->par;
-
 		unregister_framebuffer(info);
 		kfree(info->screen_base);
 		kfree(par->buf);
+		fb_dealloc_cmap(&info->cmap);
 		gpio_free(par->rst);
 		gpio_free(par->dc);
 		framebuffer_release(info);

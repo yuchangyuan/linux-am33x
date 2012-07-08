@@ -2432,6 +2432,21 @@ config FB_SSD1306
       This driver implements support for the SSD1306 OLED controller
       in SPI mode.
 
+config FB_SSD1306_1BPP
+    bool "SSD1306 framebuffer in 1bpp mode"
+    depends on FB_SSD1306
+    default n
+    help
+      Choose this option if you want framebuffer in 1bpp mode, which
+      not is supported by X server.
+
+config FB_SSD1306_DITHER
+    bool "Enable SSD1306 framebuffer dither"
+    depends on FB_SSD1306 && !FB_SSD1306_1BPP
+    default y
+    help
+      Choose this option if you want enable dither in 8bpp mode.
+
 source "drivers/video/omap/Kconfig"
 source "drivers/video/omap2/Kconfig"
 
