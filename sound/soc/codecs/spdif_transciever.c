@@ -44,7 +44,11 @@ static struct snd_soc_dai_driver dit_stub_dai = {
 	.playback 	= {
 		.stream_name	= "Playback",
 		.channels_min	= 1,
+#ifdef CONFIG_SND_AM335X_SOC_EVM_DIT
+		.channels_max	= 2,
+#else
 		.channels_max	= 384,
+#endif
 		.rates		= STUB_RATES,
 		.formats	= STUB_FORMATS,
 	},
