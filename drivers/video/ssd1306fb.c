@@ -522,6 +522,9 @@ static int __devexit ssd1306fb_remove(struct spi_device *spi)
 
 	if (info) {
 		struct ssd1306fb_par *par = info->par;
+		if (info->fbdefio) {
+			fb_deferred_io_cleanup(info);
+		}
 		free_pages_exact(info->screen_base, info->fix.smem_len);
 		unregister_framebuffer(info);
 		kfree(par->buf);
